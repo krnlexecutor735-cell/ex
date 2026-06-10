@@ -1,0 +1,96 @@
+-- ส่วนเสริมทำสคริป-เป้าเล็งอัตโนมัติ
+-- เซอร์วิสพื้นฐานที่จำเป็นต้องใช้
+local Players = game:GetService("Players")
+local RS = game:GetService("RunService")
+local LocalPlayer = Players.LocalPlayer
+local Camera = workspace.CurrentCamera
+
+-- ค่าสถานะ (State) เฉพาะของระบบเล็งเป้า
+local State = {
+    AimEnabled = false, 
+    AimFOV = 150, 
+    AimColor = {48, 255, 106}, 
+    RainbowAim = false,
+    RainbowSpeed = 400, 
+    AimThroughWall = false
+}
+
+-- ระบบลูปสีสายรุ้ง (Smooth Rainbow)
+local RainbowColor = Color3.new(1,1,1)
+task.spawn(function()
+    local h = 0
+    while true do
+        h = h + (1/math.max(State.RainbowSpeed, 1))
+        if h > 1 then h = 0 end
+        RainbowColor = Color3.fromHSV(h, 0.8, 1)
+        task.wait()
+    end
+end)
+
+-- ฟังก์ชันสำหรับหาเป้าหมายที่อยู่ใกล้จุดกึ่งกลางจอที่สุดและอยู่ในระยะ FOV
+local function GetCurrentTarget()
+    if not State.AimEnabled then return nil end
+    local target, close = nil, State.AimFOV
+    local mid = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)
+    for _, v in pairs(Players:GetPlayers()) do
+        if v ~= LocalPlayer and v.Character and v.Character:FindFirstChild("Head") then
+            local head = v.Character.Head
+            local p, vis = Camera:WorldToViewportPoint(head.Position)
+            if vis then
+                local mag = (Vector2.new(p.X, p.Y) - mid).Magnitude
+                local canSee = true
+                if not State.AimThroughWall then
+                    local rayParams = RaycastParams.new()
+                    rayParams.FilterDescendantsInstances = {LocalPlayer.Character, v.Character, Camera}
+                    rayParams.FilterType = Enum.RaycastFilterType.Exclude
+                    local result = workspace:Raycast(Camera.CFrame.Position, (head.Position - Camera.CFrame.Position).Unit * (head.Position - Camera.CFrame.Position).Magnitude, rayParams)
+                    if result then canSee = false end
+                end
+                if mag < close and canSee then 
+                    close = mag 
+                    target = v 
+                end
+            end
+        end
+    end
+    return target
+end
+
+-- สร้างวงกลมแสดงระยะเล็ง (FOV Circle) บนหน้าจอ
+if LocalPlayer.PlayerGui:FindFirstChild("PunFOV") then LocalPlayer.PlayerGui.PunFOV:Destroy() end
+local fovGui = Instance.new("ScreenGui", LocalPlayer.PlayerGui)
+fovGui.Name, fovGui.IgnoreGuiInset, fovGui.DisplayOrder = "PunFOV", true, 999
+local circ = Instance.new("Frame", fovGui)
+circ.AnchorPoint, circ.BackgroundTransparency, circ.Visible = Vector2.new(0.5, 0.5), 1, false
+local stroke = Instance.new("UIStroke", circ)
+stroke.Thickness = 2
+Instance.new("UICorner", circ).CornerRadius = UDim.new(1, 0)
+
+-- แถบเมนู WindUI (**ต้องมีตัวแปร Window จากสคริปต์หลักของคุณก่อนบรรทัดนี้**)
+local T4 = Window:Tab({ Title = "เล็งเป้าหมาย", Icon = "crosshair" })
+T4:Toggle({ Title = "ปุ่มเล็งหัว", Value = State.AimEnabled, Callback = function(v) State.AimEnabled = v end })
+T4:Toggle({ Title = "เล็งทะลุกำแพง", Value = State.AimThroughWall, Callback = function(v) State.AimThroughWall = v end })
+T4:Toggle({ Title = "โหมดสายรุ้งสมูท", Value = State.RainbowAim, Callback = function(v) State.RainbowAim = v end })
+T4:Slider({ Title = "ความเร็วสายรุ้ง", Step = 1, Value = { Min = 50, Max = 1000, Default = 1050 - State.RainbowSpeed }, Callback = function(v) State.RainbowSpeed = 1050 - v end })
+T4:Colorpicker({ Title = "สีเป้าหมาย", Default = Color3.fromRGB(unpack(State.AimColor)), Callback = function(v) State.AimColor = {math.floor(v.R*255), math.floor(v.G*255), math.floor(v.B*255)} end })
+T4:Slider({ Title = "ระยะการเล็ง", Step = 1, Value = { Min = 10, Max = 800, Default = State.AimFOV }, Callback = function(v) State.AimFOV = v end })
+
+-- ตัวแปรล็อกเป้าหมายปัจจุบัน และระบบการทำงานของกล้อง (Loop)
+local CurrentLock = nil
+RS.RenderStepped:Connect(function()
+    local mid = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)
+    CurrentLock = GetCurrentTarget()
+    
+    -- อัปเดตการแสดงผลของวงกลม FOV
+    circ.Visible = State.AimEnabled
+    if circ.Visible then
+        circ.Size = UDim2.fromOffset(State.AimFOV * 2, State.AimFOV * 2)
+        circ.Position = UDim2.fromOffset(mid.X, mid.Y)
+        stroke.Color = State.RainbowAim and RainbowColor or Color3.fromRGB(unpack(State.AimColor))
+    end
+    
+    -- ล็อกหน้าจอเข้าหาหัวของเป้าหมาย
+    if CurrentLock and CurrentLock.Character and CurrentLock.Character:FindFirstChild("Head") then
+        Camera.CFrame = CFrame.new(Camera.CFrame.Position, CurrentLock.Character.Head.Position)
+    end
+end)
