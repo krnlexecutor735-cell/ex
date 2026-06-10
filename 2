@@ -1,0 +1,17 @@
+-- ส่วนเสริมทำสคริป-ตัวเปลี่ยน theme ui
+local Tab = Window:Tab({
+    Title = "ธีม",
+    Icon = "bird", -- optional
+})
+
+local Dropdown = Tab:Dropdown({
+    Title = "เลือกธีม",
+    Values = {
+        "Light", "Dark", "Rose", "Plant", "Red", "Indigo", 
+        "Sky", "Violet", "Amber", "Emerald", "Midnight", 
+        "Crimson", "MonakaiPro", "CottonCandy", "Mellowsi", "Rainbow"
+    },
+    Callback = function(selected)
+        WindUI:SetTheme(selected)
+    end
+})
