@@ -1,0 +1,104 @@
+-- ส่วนเสริมทำสคริป-กำหนดค่าตัวละคร
+local MiscTab = Window:Tab({ Title = "กำหนดตัวละคร", Icon = "https://cdn-icons-png.flaticon.com/128/9743/9743387.png" })
+
+local infJumpEnabled = false
+local noclipEnabled = false
+local hiddenfling = false
+
+local function fling()
+    local hrp, vel, movel = nil, nil, 0.1
+    while hiddenfling do
+        RS.Heartbeat:Wait()
+        local character = LocalPlayer.Character
+        hrp = character and character:FindFirstChild("HumanoidRootPart")
+        if hrp then
+            vel = hrp.Velocity
+            hrp.Velocity = vel * 15000 + Vector3.new(0, 15000, 0)
+            RS.RenderStepped:Wait()
+            hrp.Velocity = vel
+            RS.Stepped:Wait()
+            hrp.Velocity = vel + Vector3.new(0, movel, 0)
+            movel = -movel
+        end
+    end
+end
+
+MiscTab:Slider({
+    Title = "ความเร็วการเดิน",
+    Value = { Min = 16, Max = 200, Default = 16 },
+    Callback = function(Value)
+        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
+            LocalPlayer.Character.Humanoid.WalkSpeed = Value
+        end
+    end
+})
+
+MiscTab:Slider({
+    Title = "ความสูงการกระโดด",
+    Value = { Min = 50, Max = 300, Default = 50 },
+    Callback = function(Value)
+        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
+            LocalPlayer.Character.Humanoid.JumpPower = Value
+        end
+    end
+})
+
+MiscTab:Toggle({
+    Title = "กระโดดไม่จำกัด",
+    Icon = "",
+    Value = false,
+    Callback = function(state)
+        infJumpEnabled = state
+    end
+})
+
+MiscTab:Toggle({
+    Title = "ดีดผู้อื่น",
+    Icon = "",
+    Value = false,
+    Callback = function(state)
+        hiddenfling = state
+        if state then
+            task.spawn(fling)
+        end
+    end
+})
+
+UIS.JumpRequest:Connect(function()
+    if infJumpEnabled and LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
+        LocalPlayer.Character:FindFirstChildOfClass("Humanoid"):ChangeState(Enum.HumanoidStateType.Jumping)
+    end
+end)
+
+MiscTab:Toggle({
+    Title = "ทะลุส่งของ",
+    Icon = "",
+    Value = false,
+    Callback = function(state)
+        noclipEnabled = state
+        if not state and LocalPlayer.Character then
+            for _, part in pairs(LocalPlayer.Character:GetDescendants()) do
+                if part:IsA("BasePart") then
+                    part.CanCollide = true
+                end
+            end
+        end
+    end
+})
+
+RS.Stepped:Connect(function()
+    if noclipEnabled and LocalPlayer.Character then
+        for _, part in pairs(LocalPlayer.Character:GetDescendants()) do
+            if part:IsA("BasePart") and part.CanCollide then
+                part.CanCollide = false
+            end
+        end
+    end
+end)
+
+MiscTab:Button({
+    Title = "ระบบบิน",
+    Callback = function()
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/XNEOFF/FlyGuiV3/main/FlyGuiV3.txt"))()
+    end
+})
