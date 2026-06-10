@@ -1,0 +1,50 @@
+-- ส่วนเสริมทำสคริป-เทเลพอร์ตไปหาคน
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+
+local function getPlayerNames()
+    local playerList = {}
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer then
+            table.insert(playerList, player.Name)
+        end
+    end
+    return playerList
+end
+
+-- เปลี่ยนชื่อแท็บเป็น "วาร์ป"
+local TabTp = Window:Tab({
+    Title = "วาร์ปหาคน",
+    Icon = "bird", 
+})
+
+local targetPlayerName = ""
+
+-- เปลี่ยนชื่อดรอปดาวน์เป็น "เลือกคน"
+local Dropdown = TabTp:Dropdown({
+    Title = "เลือกผู้เล่น",
+    Values = getPlayerNames(),
+    Callback = function(selected)
+        targetPlayerName = selected
+    end
+})
+
+-- เปลี่ยนชื่อปุ่มเป็น "กดวาร์ปเลย"
+local Button = TabTp:Button({
+    Title = "วาร์ปไปเลย",
+    Callback = function()
+        if targetPlayerName ~= "" then
+            local targetPlayer = Players:FindFirstChild(targetPlayerName)
+            
+            if targetPlayer and targetPlayer.Character and targetPlayer.Character:FindFirstChild("Head") then
+                local myCharacter = LocalPlayer.Character
+                local targetHead = targetPlayer.Character.Head
+                
+                if myCharacter and myCharacter:FindFirstChild("HumanoidRootPart") then
+                    local teleportPosition = targetHead.Position + Vector3.new(0, 3, 0)
+                    myCharacter.HumanoidRootPart.CFrame = CFrame.new(teleportPosition)
+                end
+            end
+        end
+    end
+})
